@@ -20,7 +20,9 @@ public class UserService {
 //                .orElseThrow(() -> new RuntimeException("해당 UserName이 중복 됩니다."));
 
         userRepository.findByUserName(request.getUserName())
-                .ifPresent(user -> new RuntimeException("해당 UserName이 중복 됩니다."));
+                .ifPresent(user -> {
+                    throw new RuntimeException("해당 UserName이 중복 됩니다.");
+                });
 
         User savedUser = userRepository.save(request.toEntity());
 
