@@ -3,33 +3,67 @@ package com.example.springbootsecurity.service;
 import com.example.springbootsecurity.domain.User;
 import com.example.springbootsecurity.domain.dto.UserDto;
 import com.example.springbootsecurity.domain.dto.UserJoinRequest;
+import com.example.springbootsecurity.exception.ErrorCode;
+import com.example.springbootsecurity.exception.HospitalReviewAppException;
 import com.example.springbootsecurity.repository.UserRepository;
+import com.example.springbootsecurity.utils.JwtTokenUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
+    private final BCryptPasswordEncoder encoder;
 
-    public UserDto join(UserJoinRequest request){
+    @Value("${jwt.token.secret}")
+    private String secretkey;
+    private long expireTimeMs = 1000 * 60 * 60; //1시간
 
-//        userRepository.findByUserName(request.getUserName())
-//                .orElseThrow(() -> new RuntimeException("해당 UserName이 중복 됩니다."));
+    public UserDto join(UserJoinRequest userJoinRequest) {
+        log.info("user 정보 : " + userJoinRequest.getUserName() + ", " + userJoinRequest.getEmail() + ", " + userJoinRequest.getPassword());
 
-        userRepository.findByUserName(request.getUserName())
-                .ifPresent(user -> {
-                    throw new RuntimeException("해당 UserName이 중복 됩니다.");
-                });
-
-        User savedUser = userRepository.save(request.toEntity());
+        //비즈니스 로직 - 회원가입
+        //아이디가 중복이면 회원가입 x --> 예외 발생
+        userRepository.findByUserName(userJoinRequest.getUserName()).ifPresent(
+                user -> {throw new HospitalReviewAppException(
+                        ErrorCode.DUPLICATED_USER_NAME, String.format("Username %s이 중복됩니다",userJoinRequest.getUserName())
+                );
+                }
+        );
+        //중복이 아닐경우 회원가입
+        //패스워드를 받아서 인코드 후 넣어준다
+        User save = userRepository.save(userJoinRequest.toEntity(encoder.encode(userJoinRequest.getPassword())));
 
         return UserDto.builder()
-                .id(savedUser.getId())
-                .userName(savedUser.getUserName())
-                .email(savedUser.getEmailAddress())
+                .id(save.getId())
+                .userName(save.getUserName())
+                .email(save.getEmailAddress())
                 .build();
+    }
+
+    public String login(String userName, String password) {
+        //userName이 있는지 확인
+        log.info("login userName : " + userName);
+        User user = userRepository.findByUserName(userName).orElseThrow(
+                () -> {throw new HospitalReviewAppException(
+                        ErrorCode.NOT_FOUND, String.format("username %s이 없습니다", userName)
+                );}
+        );
+
+        log.info("login password : " + password);
+        //password일치하는지 확인
+        if(!encoder.matches(password, user.getPassword())){
+            throw new HospitalReviewAppException(ErrorCode.INVALID_PASSWORD, String.format("아이디 혹은 비밀번호가 잘못되었습니다"));
+        }
+
+        //두가지 확인중 예외가 없을경우 token발행
+        return JwtTokenUtil.createToken(userName, secretkey, expireTimeMs);
     }
 }

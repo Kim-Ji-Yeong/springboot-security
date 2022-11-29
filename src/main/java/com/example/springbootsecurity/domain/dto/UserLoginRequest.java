@@ -1,12 +1,12 @@
 package com.example.springbootsecurity.domain.dto;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
-@Builder
+
 @AllArgsConstructor
 @Getter
-public class UserJoinResponse {
+public class UserLoginRequest {
+
     private String userName;
-    private String emailAddress;
+    private String password;
 }

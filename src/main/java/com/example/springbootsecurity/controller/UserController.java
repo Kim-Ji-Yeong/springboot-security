@@ -1,11 +1,10 @@
 package com.example.springbootsecurity.controller;
 
 import com.example.springbootsecurity.domain.Response;
-import com.example.springbootsecurity.domain.dto.UserDto;
-import com.example.springbootsecurity.domain.dto.UserJoinRequest;
-import com.example.springbootsecurity.domain.dto.UserJoinResponse;
+import com.example.springbootsecurity.domain.dto.*;
 import com.example.springbootsecurity.service.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,13 +13,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
+@Slf4j
 public class UserController {
 
     private final UserService userService;
 
     @PostMapping("/join")
-    public Response<UserJoinResponse> join(@RequestBody UserJoinRequest userJoinRequest) {
+    public Response<UserJoinResponse> join(@RequestBody UserJoinRequest userJoinRequest) throws Throwable {
         UserDto userDto = userService.join(userJoinRequest);
-        return Response.success(new UserJoinResponse(userDto.getUserName(), userDto.getEmail()));
+
+        return Response.success(
+                UserJoinResponse.builder().userName(userDto.getUserName()).emailAddress(userDto.getEmail()).build()
+        );
+    }
+
+    @PostMapping("/login")
+    public Response<UserLoginResponse> login(@RequestBody UserLoginRequest userLoginRequest) {
+        String token = userService.login(userLoginRequest.getUserName(),userLoginRequest.getPassword());
+        return Response.success(new UserLoginResponse(token));
     }
 }
